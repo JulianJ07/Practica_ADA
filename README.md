@@ -73,12 +73,16 @@ Los pedidos se guardan en una cola de prioridad. El sistema atiende primero los
 pedidos mas urgentes. Si dos pedidos tienen la misma prioridad, se atiende
 primero el que llego antes.
 
+Las prioridades ya no dependen automaticamente del tipo de producto. El usuario
+las escribe al registrar el pedido o en el archivo TXT. Esto permite que un
+mismo tipo de producto pueda ser urgente o no segun el caso.
+
 Prioridades usadas:
 
 ```text
-comida preparada = prioridad alta
-mercado = prioridad media
-camiseta = prioridad baja
+alta = pedido urgente
+media = pedido normal
+baja = pedido menos urgente
 ```
 
 Internamente, la prioridad se maneja asi:
@@ -97,7 +101,7 @@ los pedidos pendientes en la interfaz.
 ### Diccionarios
 
 Se usan diccionarios para guardar las conexiones del grafo y para asociar cada
-tipo de pedido con su prioridad.
+prioridad con su valor numerico.
 
 ## 5. Descripcion de la solucion propuesta
 
@@ -110,11 +114,12 @@ texto. Cada pedido contiene:
 
 - nombre del cliente;
 - tipo de pedido;
+- prioridad;
 - destino.
 
-Cuando el pedido se registra, el sistema asigna automaticamente su prioridad.
-Luego el pedido entra a una cola de prioridad. La cola ordena primero por
-urgencia y despues por orden de llegada.
+Cuando el pedido se registra, el sistema toma la prioridad escrita por el
+usuario o por el archivo TXT. Luego el pedido entra a una cola de prioridad. La
+cola ordena primero por urgencia y despues por orden de llegada.
 
 Cuando el repartidor procesa un pedido, el sistema toma el primer pedido de la
 cola, calcula con Dijkstra la ruta mas corta desde la ubicacion actual hasta el
@@ -187,21 +192,33 @@ El archivo debe tener una linea por pedido y separar los campos con punto y
 coma:
 
 ```text
-cliente;tipo_pedido;destino
-Ana;comida preparada;Cliente Ana
-Luis;camiseta;Cliente Luis
-Marta;mercado;Cliente Marta
+cliente;tipo_pedido;prioridad;destino
+Ana;pizza familiar;alta;Cliente Ana
+Luis;camiseta;baja;Cliente Luis
+Marta;mercado semanal;media;Cliente Marta
 ```
 
 El archivo puede incluir una fila de encabezado. Tambien se pueden usar lineas
 vacias o comentarios que empiecen con `#`.
 
-Tipos de pedido validos:
+El campo `tipo_pedido` es libre. Puede ser cualquier descripcion corta, por
+ejemplo `pizza familiar`, `camiseta`, `mercado semanal`, `medicamento` o
+`documentos`.
+
+Prioridades validas:
 
 ```text
-comida preparada
-mercado
-camiseta
+alta
+media
+baja
+```
+
+Tambien se pueden escribir como numeros:
+
+```text
+1 = alta
+2 = media
+3 = baja
 ```
 
 Destinos validos incluidos en el mapa:
@@ -225,7 +242,8 @@ El proyecto incluye el archivo `pedidos_ejemplo.txt` para probar la carga.
 ## 10. Funcionamiento de la interfaz grafica
 
 La interfaz muestra un mapa con nodos y calles. Los numeros sobre las calles son
-los tiempos de recorrido. El panel derecho permite registrar pedidos manuales o
+los tiempos de recorrido. El panel derecho permite registrar pedidos manuales,
+escribir libremente el tipo de producto, seleccionar la prioridad del pedido o
 cargar pedidos desde TXT.
 
 Colores principales:
@@ -243,16 +261,16 @@ repartidor cambia su ubicacion al destino entregado.
 Supongamos que se cargan estos pedidos:
 
 ```text
-Ana;comida preparada;Cliente Ana
-Luis;camiseta;Cliente Luis
-Marta;mercado;Cliente Marta
+Ana;pizza familiar;alta;Cliente Ana
+Luis;camiseta;baja;Cliente Luis
+Marta;mercado semanal;media;Cliente Marta
 ```
 
 El sistema los ordena asi:
 
 ```text
-1. Ana - comida preparada - prioridad alta
-2. Marta - mercado - prioridad media
+1. Ana - pizza familiar - prioridad alta
+2. Marta - mercado semanal - prioridad media
 3. Luis - camiseta - prioridad baja
 ```
 

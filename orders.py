@@ -2,7 +2,7 @@
 
 Los pedidos se ordenan por dos criterios:
 
-1. Prioridad del tipo de producto.
+1. Prioridad indicada para el pedido.
 2. Orden de llegada cuando dos pedidos tienen la misma prioridad.
 
 Python incluye ``heapq``, una implementacion eficiente de monticulos binarios.
@@ -16,10 +16,10 @@ from heapq import heappop, heappush
 from itertools import count
 
 
-PRIORITY_TYPES: dict[str, tuple[int, str]] = {
-    "comida preparada": (1, "alta"),
-    "mercado": (2, "media"),
-    "camiseta": (3, "baja"),
+PRIORITY_LEVELS: dict[str, int] = {
+    "alta": 1,
+    "media": 2,
+    "baja": 3,
 }
 
 
@@ -62,15 +62,15 @@ class PriorityOrderQueue:
         self,
         customer_name: str,
         product_type: str,
+        priority: str,
         destination: str,
     ) -> DeliveryOrder:
         """Registra un nuevo pedido y lo inserta en la cola."""
         normalized_type = product_type.strip().lower()
-        if normalized_type not in PRIORITY_TYPES:
-            valid_types = ", ".join(PRIORITY_TYPES)
-            raise ValueError(f"Tipo de pedido no valido. Opciones: {valid_types}.")
+        if not normalized_type:
+            raise ValueError("El tipo de pedido no puede estar vacio.")
 
-        priority_value, priority_label = PRIORITY_TYPES[normalized_type]
+        priority_value, priority_label = normalize_priority(priority)
         arrival_order = next(self._arrival_counter)
         order = DeliveryOrder(
             order_id=next(self._order_counter),
@@ -113,13 +113,37 @@ class PriorityOrderQueue:
 
 
 def get_priority_options_text() -> str:
-    """Devuelve los tipos de pedido disponibles en formato legible."""
+    """Devuelve las prioridades disponibles en formato legible."""
     lines = []
 
-    for product_type, (priority_value, priority_label) in PRIORITY_TYPES.items():
-        lines.append(
-            f"- {product_type}: prioridad {priority_label} "
-            f"(valor interno {priority_value})"
-        )
+    for priority_label, priority_value in PRIORITY_LEVELS.items():
+        lines.append(f"- {priority_label}: valor interno {priority_value}")
 
     return "\n".join(lines)
+
+
+def normalize_priority(priority: str) -> tuple[int, str]:
+    """Convierte una prioridad escrita por el usuario en valor numerico.
+
+    Se aceptan las etiquetas ``alta``, ``media`` y ``baja``. Tambien se aceptan
+    los numeros ``1``, ``2`` y ``3`` para facilitar la carga desde archivos.
+    """
+    normalized_priority = priority.strip().lower()
+
+    if normalized_priority in PRIORITY_LEVELS:
+        return PRIORITY_LEVELS[normalized_priority], normalized_priority
+
+    numeric_aliases = {
+        "1": "alta",
+        "2": "media",
+        "3": "baja",
+    }
+    if normalized_priority in numeric_aliases:
+        label = numeric_aliases[normalized_priority]
+        return PRIORITY_LEVELS[label], label
+
+    valid_priorities = ", ".join(PRIORITY_LEVELS)
+    raise ValueError(
+        f"Prioridad no valida. Opciones: {valid_priorities} "
+        "o los numeros 1, 2, 3."
+    )

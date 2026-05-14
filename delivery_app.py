@@ -14,7 +14,11 @@ from math import isinf
 
 from city_graph import RouteResult, WeightedGraph, build_default_city_graph
 from order_file import read_orders_from_txt
-from orders import DeliveryOrder, PriorityOrderQueue, get_priority_options_text
+from orders import (
+    DeliveryOrder,
+    PriorityOrderQueue,
+    get_priority_options_text,
+)
 
 
 DEFAULT_START_LOCATION = "Bodega"
@@ -90,17 +94,20 @@ class DeliveryApp:
         """Registra un pedido ingresado por el usuario."""
         print("\nREGISTRAR PEDIDO")
         print("-" * 78)
-        print("Tipos de pedido disponibles:")
+        print("El tipo de pedido es libre. Ejemplos: comida, camiseta, mercado.")
+        print("Prioridades disponibles:")
         print(get_priority_options_text())
 
         customer_name = input("Nombre del cliente: ").strip()
         product_type = input("Tipo de pedido: ").strip()
+        priority = input("Prioridad del pedido (alta/media/baja): ").strip()
         destination = self._read_location("Destino del pedido: ")
 
         try:
             order = self.order_queue.add_order(
                 customer_name=customer_name,
                 product_type=product_type,
+                priority=priority,
                 destination=destination,
             )
         except ValueError as error:
@@ -138,7 +145,7 @@ class DeliveryApp:
         """Carga pedidos desde un archivo TXT separado por punto y coma."""
         print("\nCARGAR PEDIDOS DESDE TXT")
         print("-" * 78)
-        print("Formato esperado: cliente;tipo_pedido;destino")
+        print("Formato esperado: cliente;tipo_pedido;prioridad;destino")
         path = input("Ruta del archivo TXT: ").strip().strip('"')
 
         try:
@@ -165,6 +172,7 @@ class DeliveryApp:
                 self.order_queue.add_order(
                     customer_name=order_input.customer_name,
                     product_type=order_input.product_type,
+                    priority=order_input.priority,
                     destination=order_input.destination,
                 )
                 loaded_count += 1

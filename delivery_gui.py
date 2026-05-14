@@ -19,7 +19,7 @@ from city_graph import (
     build_default_city_graph,
 )
 from order_file import read_orders_from_txt
-from orders import DeliveryOrder, PRIORITY_TYPES, PriorityOrderQueue
+from orders import DeliveryOrder, PRIORITY_LEVELS, PriorityOrderQueue
 
 
 DEFAULT_START_LOCATION = "Bodega"
@@ -115,13 +115,17 @@ class DeliveryGUI:
         self.customer_entry.pack(fill="x", pady=(0, 8))
 
         ttk.Label(form, text="Tipo de pedido").pack(anchor="w")
-        self.product_type_combo = ttk.Combobox(
+        self.product_type_entry = ttk.Entry(form)
+        self.product_type_entry.pack(fill="x", pady=(0, 8))
+
+        ttk.Label(form, text="Prioridad").pack(anchor="w")
+        self.priority_combo = ttk.Combobox(
             form,
-            values=list(PRIORITY_TYPES.keys()),
+            values=list(PRIORITY_LEVELS.keys()),
             state="readonly",
         )
-        self.product_type_combo.current(0)
-        self.product_type_combo.pack(fill="x", pady=(0, 8))
+        self.priority_combo.current(0)
+        self.priority_combo.pack(fill="x", pady=(0, 8))
 
         ttk.Label(form, text="Destino").pack(anchor="w")
         self.destination_combo = ttk.Combobox(
@@ -198,7 +202,8 @@ class DeliveryGUI:
     def add_order(self) -> None:
         """Agrega un pedido a la cola y actualiza el mapa."""
         customer = self.customer_entry.get().strip()
-        product_type = self.product_type_combo.get().strip()
+        product_type = self.product_type_entry.get().strip()
+        priority = self.priority_combo.get().strip()
         destination = self.destination_combo.get().strip()
 
         if not customer:
@@ -206,12 +211,18 @@ class DeliveryGUI:
             return
 
         try:
-            order = self.order_queue.add_order(customer, product_type, destination)
+            order = self.order_queue.add_order(
+                customer,
+                product_type,
+                priority,
+                destination,
+            )
         except ValueError as error:
             messagebox.showerror("Pedido no valido", str(error))
             return
 
         self.customer_entry.delete(0, tk.END)
+        self.product_type_entry.delete(0, tk.END)
         self._set_route_message(
             f"Pedido #{order.order_id} agregado.\n"
             f"Prioridad: {order.priority_label}.\n"
@@ -258,6 +269,7 @@ class DeliveryGUI:
                     self.order_queue.add_order(
                         customer_name=order_input.customer_name,
                         product_type=order_input.product_type,
+                        priority=order_input.priority,
                         destination=order_input.destination,
                     )
                 )

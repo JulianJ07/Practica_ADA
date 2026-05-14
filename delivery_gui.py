@@ -50,6 +50,7 @@ class DeliveryGUI:
         self.delivery_records: list[DeliveryRecord] = []
         self.total_time = 0.0
         self.last_route: RouteResult | None = None
+        self.highlighted_path: list[str] = []
 
         self.root = tk.Tk()
         self.root.title("Rutas de entrega con Dijkstra")
@@ -180,8 +181,8 @@ class DeliveryGUI:
 
         ttk.Button(
             actions,
-            text="Calcular ruta al destino",
-            command=self.preview_route_to_destination,
+            text="Calcular ruta de pedidos desde Bodega",
+            command=self.preview_pending_orders_route,
         ).pack(fill="x", pady=(0, 6))
 
         ttk.Button(
@@ -216,8 +217,18 @@ class DeliveryGUI:
         self.status_label = ttk.Label(report, text="", justify="left")
         self.status_label.pack(anchor="w", fill="x", pady=(0, 8))
 
-        self.route_text = tk.Text(report, height=9, wrap="word")
-        self.route_text.pack(fill="both", expand=True)
+        text_frame = ttk.Frame(report)
+        text_frame.pack(fill="both", expand=True)
+
+        self.route_text = tk.Text(text_frame, height=9, wrap="word")
+        self.route_text.pack(side="left", fill="both", expand=True)
+        route_scrollbar = ttk.Scrollbar(
+            text_frame,
+            orient="vertical",
+            command=self.route_text.yview,
+        )
+        route_scrollbar.pack(side="right", fill="y")
+        self.route_text.configure(yscrollcommand=route_scrollbar.set)
         self.route_text.configure(state="disabled")
 
     def add_order(self) -> None:
@@ -247,6 +258,7 @@ class DeliveryGUI:
         self.customer_entry.delete(0, tk.END)
         self.product_type_entry.delete(0, tk.END)
         self.price_entry.delete(0, tk.END)
+        self._clear_route_highlight()
         self._set_route_message(
             f"Pedido #{order.order_id} agregado.\n"
             f"Prioridad: {order.priority_label}.\n"
@@ -307,6 +319,7 @@ class DeliveryGUI:
         if errors:
             message += "\n\nLineas no cargadas:\n" + "\n".join(errors)
 
+        self._clear_route_highlight()
         self._set_route_message(message)
         self._refresh_all()
         messagebox.showinfo("Carga finalizada", message)
@@ -314,23 +327,62 @@ class DeliveryGUI:
     def order_by_priority(self) -> None:
         """Activa la atencion por prioridad y llegada."""
         self.order_queue.use_priority_order()
+        self._clear_route_highlight()
         self._set_route_message("Pedidos ordenados por prioridad y orden de llegada.")
         self._refresh_all()
 
     def order_by_price(self) -> None:
         """Activa la atencion por precio mayor usando Merge Sort."""
         self.order_queue.use_price_order()
+        self._clear_route_highlight()
         self._set_route_message(
             "Pedidos ordenados por precio mayor usando Merge Sort."
         )
         self._refresh_all()
 
-    def preview_route_to_destination(self) -> None:
-        """Calcula una ruta desde la ubicacion actual al destino seleccionado."""
-        destination = self.destination_combo.get().strip()
-        route = self.graph.dijkstra(self.current_location, destination)
-        self.last_route = route
-        self._set_route_message(self._format_route_message(route))
+    def preview_pending_orders_route(self) -> None:
+        """Calcula la ruta completa para pedidos pendientes desde la bodega."""
+        pending_orders = self.order_queue.peek_all()
+
+        if not pending_orders:
+            messagebox.showinfo("Sin pedidos", "No hay pedidos pendientes.")
+            return
+
+        current_location = DEFAULT_START_LOCATION
+        total_cost = 0.0
+        full_path = [DEFAULT_START_LOCATION]
+        lines = [
+            "Ruta planificada desde Bodega",
+            f"Criterio: {get_sort_mode_text(self.order_queue.sort_mode)}",
+            "",
+        ]
+
+        for order in pending_orders:
+            route = self.graph.dijkstra(current_location, order.destination)
+
+            if isinf(route.total_cost):
+                lines.append(
+                    f"Pedido #{order.order_id}: no hay ruta disponible hacia "
+                    f"{order.destination}."
+                )
+                continue
+
+            total_cost += route.total_cost
+            full_path.extend(route.path[1:])
+            lines.append(
+                f"Pedido #{order.order_id} ({order.customer_name}) -> "
+                f"{order.destination}: {' -> '.join(route.path)} "
+                f"({route.total_cost:g} min)"
+            )
+            current_location = order.destination
+
+        lines.append("")
+        lines.append(f"Ruta completa: {' -> '.join(full_path)}")
+        lines.append(f"Tiempo total estimado: {total_cost:g} minutos")
+
+        self.last_route = None
+        self.highlighted_path = full_path
+        self._set_route_message("\n".join(lines))
         self._refresh_all()
 
     def process_next_order(self) -> None:
@@ -343,6 +395,7 @@ class DeliveryGUI:
 
         route = self.graph.dijkstra(self.current_location, order.destination)
         self.last_route = route
+        self.highlighted_path = route.path
         self.delivery_records.append(DeliveryRecord(order=order, route=route))
 
         if not isinf(route.total_cost):
@@ -398,7 +451,7 @@ class DeliveryGUI:
     def _draw_map(self) -> None:
         """Dibuja el grafo, pedidos y ruta actual en el canvas."""
         self.canvas.delete("all")
-        highlighted_edges = self._route_edges(self.last_route)
+        highlighted_edges = self._route_edges(self.highlighted_path)
         pending_destinations = {order.destination for order in self.order_queue.peek_all()}
 
         for origin, destination, cost in self.graph.edges():
@@ -489,14 +542,14 @@ class DeliveryGUI:
                 font=("Segoe UI", 9),
             )
 
-    def _route_edges(self, route: RouteResult | None) -> set[frozenset[str]]:
+    def _route_edges(self, path: list[str]) -> set[frozenset[str]]:
         """Convierte una ruta en un conjunto de aristas resaltables."""
-        if route is None or not route.path:
+        if not path:
             return set()
 
         return {
-            frozenset({route.path[index], route.path[index + 1]})
-            for index in range(len(route.path) - 1)
+            frozenset({path[index], path[index + 1]})
+            for index in range(len(path) - 1)
         }
 
     def _format_route_message(self, route: RouteResult) -> str:
@@ -524,6 +577,11 @@ class DeliveryGUI:
         self.route_text.delete("1.0", tk.END)
         self.route_text.insert(tk.END, message)
         self.route_text.configure(state="disabled")
+
+    def _clear_route_highlight(self) -> None:
+        """Limpia la ruta resaltada cuando cambia la lista de pedidos."""
+        self.last_route = None
+        self.highlighted_path = []
 
 
 def main() -> None:

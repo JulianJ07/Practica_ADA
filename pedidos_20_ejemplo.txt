@@ -1,0 +1,21 @@
+cliente;tipo_pedido;prioridad;precio;destino
+Valentina;hamburguesa doble;alta;38000;Cliente Ana
+Mateo;zapatos deportivos;media;210000;Cliente Luis
+Camila;mercado familiar;alta;185000;Cliente Marta
+Santiago;audifonos bluetooth;baja;95000;Barrio Norte
+Laura;medicamento urgente;alta;42000;Hospital
+Daniel;camiseta estampada;baja;65000;Cliente Luis
+Isabella;documentos legales;media;30000;Centro
+Sebastian;ramo de flores;media;78000;Cliente Marta
+Manuela;pizza grande;alta;56000;Cliente Ana
+Nicolas;reloj digital;baja;160000;Zona Comercial
+Sofia;mercado pequeno;media;72000;Barrio Sur
+Andres;portatil usado;alta;1250000;Universidad
+Mariana;postre artesanal;media;28000;Parque
+Juan;chaqueta impermeable;baja;240000;Cliente Luis
+Salome;comida mexicana;alta;61000;Cliente Marta
+Felipe;libros universitarios;media;135000;Universidad
+Gabriela;cosmeticos;baja;118000;Barrio Norte
+Tomas;repuestos bicicleta;media;89000;Zona Comercial
+Luciana;sushi familiar;alta;99000;Cliente Ana
+Emiliano;regalo sorpresa;baja;155000;Cliente Marta

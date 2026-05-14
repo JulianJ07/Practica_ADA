@@ -156,7 +156,7 @@ En la aplicacion el usuario puede:
 - revisar el orden en que se atenderan los pedidos;
 - ordenar los pedidos por precio mayor usando Merge Sort;
 - cambiar entre el criterio de prioridad y el criterio de precio;
-- calcular una ruta entre dos puntos;
+- calcular una ruta completa de pedidos pendientes desde la bodega;
 - procesar el siguiente pedido;
 - procesar todos los pedidos pendientes;
 - observar la ruta resaltada en la interfaz grafica;
@@ -174,6 +174,7 @@ Practica_ADA/
 |-- main.py              # Entrada para modo consola
 |-- gui.py               # Entrada para interfaz grafica
 |-- pedidos_ejemplo.txt  # Archivo de pedidos de ejemplo
+|-- pedidos_20_ejemplo.txt # Archivo con 20 pedidos de prueba
 |-- README.md
 `-- .gitignore
 ```
@@ -270,6 +271,12 @@ precio del pedido o cargar pedidos desde TXT.
 El boton `ORDENAR POR PRECIO` cambia el criterio activo y organiza los pedidos
 pendientes con Merge Sort de mayor a menor precio. El boton `Ordenar por
 prioridad` vuelve al criterio de urgencia y orden de llegada.
+
+El boton `Calcular ruta de pedidos desde Bodega` no entrega pedidos ni cambia la
+ubicacion real del repartidor. Su funcion es planificar el recorrido completo de
+los pedidos pendientes segun el criterio activo. Siempre empieza en `Bodega`,
+visita los destinos de los pedidos en orden y resalta todo el recorrido en el
+mapa.
 
 Colores principales:
 

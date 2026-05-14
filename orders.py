@@ -70,6 +70,16 @@ class PriorityOrderQueue:
         """Activa el ordenamiento por precio mayor."""
         self.set_sort_mode(SORT_BY_PRICE)
 
+    def clear(self) -> None:
+        """Elimina pedidos pendientes y reinicia los contadores del lote."""
+        self._orders.clear()
+        self._arrival_counter = count(1)
+        self._order_counter = count(1)
+
+    def has_destination(self, destination: str) -> bool:
+        """Indica si ya existe un pedido pendiente para ese destino."""
+        return any(order.destination == destination for order in self._orders)
+
     def add_order(
         self,
         customer_name: str,
@@ -91,6 +101,15 @@ class PriorityOrderQueue:
         if not normalized_customer:
             raise ValueError("El nombre del cliente no puede estar vacio.")
 
+        normalized_destination = destination.strip()
+        if not normalized_destination:
+            raise ValueError("El destino no puede estar vacio.")
+        if self.has_destination(normalized_destination):
+            raise ValueError(
+                f"Ya existe un pedido pendiente para '{normalized_destination}'. "
+                "Cada pedido del lote debe ir a una persona diferente."
+            )
+
         priority_value, priority_label = normalize_priority(priority)
         normalized_price = normalize_price(price)
         arrival_order = next(self._arrival_counter)
@@ -101,7 +120,7 @@ class PriorityOrderQueue:
             priority_value=priority_value,
             priority_label=priority_label,
             price=normalized_price,
-            destination=destination,
+            destination=normalized_destination,
             arrival_order=arrival_order,
         )
 

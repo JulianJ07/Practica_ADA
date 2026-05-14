@@ -12,7 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isinf
 
-from city_graph import RouteResult, WeightedGraph, build_default_city_graph
+from city_graph import (
+    DEFAULT_CUSTOMER_DESTINATIONS,
+    RouteResult,
+    WeightedGraph,
+    build_default_city_graph,
+)
 from order_file import read_orders_from_txt
 from orders import (
     DeliveryOrder,
@@ -106,7 +111,7 @@ class DeliveryApp:
         product_type = input("Tipo de pedido: ").strip()
         priority = input("Prioridad del pedido (alta/media/baja): ").strip()
         price = input("Precio total del pedido: ").strip()
-        destination = self._read_location("Destino del pedido: ")
+        destination = self._read_customer_destination("Destino del pedido: ")
 
         try:
             order = self.order_queue.add_order(
@@ -164,14 +169,15 @@ class DeliveryApp:
             print(error)
             return
 
+        self._reset_for_new_order_list()
         loaded_count = 0
         errors: list[str] = []
 
         for order_input in order_inputs:
-            if not self.graph.has_node(order_input.destination):
+            if order_input.destination not in DEFAULT_CUSTOMER_DESTINATIONS:
                 errors.append(
-                    f"Linea {order_input.line_number}: destino inexistente "
-                    f"'{order_input.destination}'."
+                    f"Linea {order_input.line_number}: destino invalido "
+                    f"'{order_input.destination}'. Debe ser un cliente del mapa."
                 )
                 continue
 
@@ -308,6 +314,24 @@ class DeliveryApp:
 
             print("Ese punto no existe en el mapa. Opciones disponibles:")
             print(", ".join(self.graph.nodes()))
+
+    def _read_customer_destination(self, prompt: str) -> str:
+        """Lee un destino de cliente valido para un pedido."""
+        while True:
+            location = input(prompt).strip()
+
+            if location in DEFAULT_CUSTOMER_DESTINATIONS:
+                return location
+
+            print("Ese destino no es un cliente valido. Opciones disponibles:")
+            print(", ".join(DEFAULT_CUSTOMER_DESTINATIONS))
+
+    def _reset_for_new_order_list(self) -> None:
+        """Reinicia pedidos y entregas al cargar un archivo nuevo."""
+        self.order_queue.clear()
+        self.current_location = DEFAULT_START_LOCATION
+        self.delivered_orders.clear()
+        self.total_delivery_time = 0.0
 
     def _format_order(self, order: DeliveryOrder) -> str:
         """Devuelve un pedido en formato legible."""

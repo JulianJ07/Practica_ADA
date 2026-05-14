@@ -14,6 +14,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from city_graph import (
     DEFAULT_CITY_POSITIONS,
+    DEFAULT_CUSTOMER_DESTINATIONS,
     RouteResult,
     WeightedGraph,
     build_default_city_graph,
@@ -54,8 +55,8 @@ class DeliveryGUI:
 
         self.root = tk.Tk()
         self.root.title("Rutas de entrega con Dijkstra")
-        self.root.geometry("1180x700")
-        self.root.minsize(1080, 640)
+        self.root.geometry("1450x820")
+        self.root.minsize(1280, 720)
 
         self._configure_style()
         self._build_layout()
@@ -94,8 +95,8 @@ class DeliveryGUI:
 
         self.canvas = tk.Canvas(
             map_frame,
-            width=820,
-            height=560,
+            width=940,
+            height=660,
             bg="#f7fafc",
             highlightthickness=1,
             highlightbackground="#cbd5e1",
@@ -140,10 +141,10 @@ class DeliveryGUI:
         ttk.Label(form, text="Destino").pack(anchor="w")
         self.destination_combo = ttk.Combobox(
             form,
-            values=self.graph.nodes(),
+            values=list(DEFAULT_CUSTOMER_DESTINATIONS),
             state="readonly",
         )
-        self.destination_combo.set("Cliente Ana")
+        self.destination_combo.set("Ana")
         self.destination_combo.pack(fill="x", pady=(0, 10))
 
         ttk.Button(form, text="Agregar pedido", command=self.add_order).pack(fill="x")
@@ -290,14 +291,15 @@ class DeliveryGUI:
             messagebox.showerror("Formato invalido", str(error))
             return
 
+        self._reset_for_new_order_list()
         loaded_orders: list[DeliveryOrder] = []
         errors: list[str] = []
 
         for order_input in order_inputs:
-            if not self.graph.has_node(order_input.destination):
+            if order_input.destination not in DEFAULT_CUSTOMER_DESTINATIONS:
                 errors.append(
-                    f"Linea {order_input.line_number}: destino inexistente "
-                    f"'{order_input.destination}'."
+                    f"Linea {order_input.line_number}: destino invalido "
+                    f"'{order_input.destination}'. Debe ser un cliente del mapa."
                 )
                 continue
 
@@ -319,7 +321,6 @@ class DeliveryGUI:
         if errors:
             message += "\n\nLineas no cargadas:\n" + "\n".join(errors)
 
-        self._clear_route_highlight()
         self._set_route_message(message)
         self._refresh_all()
         messagebox.showinfo("Carga finalizada", message)
@@ -490,20 +491,20 @@ class DeliveryGUI:
                 width = 4
 
             self.canvas.create_oval(
-                x - 20,
-                y - 20,
-                x + 20,
-                y + 20,
+                x - 15,
+                y - 15,
+                x + 15,
+                y + 15,
                 fill=fill,
                 outline=outline,
                 width=width,
             )
             self.canvas.create_text(
                 x,
-                y + 34,
+                y + 27,
                 text=node,
                 fill="#0f172a",
-                font=("Segoe UI", 9, "bold"),
+                font=("Segoe UI", 8, "bold"),
             )
 
         self._draw_legend()
@@ -582,6 +583,14 @@ class DeliveryGUI:
         """Limpia la ruta resaltada cuando cambia la lista de pedidos."""
         self.last_route = None
         self.highlighted_path = []
+
+    def _reset_for_new_order_list(self) -> None:
+        """Reinicia la simulacion al cargar un nuevo archivo de pedidos."""
+        self.order_queue.clear()
+        self.current_location = DEFAULT_START_LOCATION
+        self.delivery_records.clear()
+        self.total_time = 0.0
+        self._clear_route_highlight()
 
 
 def main() -> None:

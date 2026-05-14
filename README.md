@@ -51,16 +51,16 @@ de datos y algoritmos. La aplicacion busca:
 ### Grafo ponderado
 
 El mapa de la ciudad se representa como un grafo. Los nodos son lugares como la
-bodega, barrios, zonas comerciales y clientes. Las aristas son calles que
-conectan esos lugares. Cada arista tiene un peso que representa el tiempo
-estimado de recorrido en minutos.
+bodega, barrios, zonas comerciales y 20 clientes distintos. Las aristas son
+calles que conectan esos lugares. Cada arista tiene un peso que representa el
+tiempo estimado de recorrido en minutos.
 
 Ejemplo:
 
 ```text
 Bodega -- Centro: 4 minutos
 Centro -- Hospital: 5 minutos
-Hospital -- Cliente Ana: 4 minutos
+Hospital -- Renata: 3 minutos
 ```
 
 ### Algoritmo de Dijkstra
@@ -127,6 +127,10 @@ texto. Cada pedido contiene:
 - prioridad;
 - precio total del pedido;
 - destino.
+
+Los destinos de pedidos son clientes del mapa. El programa evita que un mismo
+lote tenga dos pedidos hacia el mismo destino, para que los pedidos vayan a
+personas diferentes.
 
 Cuando el pedido se registra, el sistema toma la prioridad escrita por el
 usuario o por el archivo TXT. Tambien registra el precio total del pedido.
@@ -212,13 +216,17 @@ coma:
 
 ```text
 cliente;tipo_pedido;prioridad;precio;destino
-Ana;pizza familiar;alta;45000;Cliente Ana
-Luis;camiseta;baja;120000;Cliente Luis
-Marta;mercado semanal;media;90000;Cliente Marta
+Ana;pizza familiar;alta;45000;Ana
+Luis;camiseta;baja;120000;Lucas
+Marta;mercado semanal;media;90000;Mariana
 ```
 
 El archivo puede incluir una fila de encabezado. Tambien se pueden usar lineas
 vacias o comentarios que empiecen con `#`.
+
+Cuando se carga un TXT nuevo, el programa reemplaza los pedidos anteriores y
+reinicia la simulacion del lote. De esta forma, una lista nueva no se suma a la
+lista cargada anteriormente.
 
 El campo `tipo_pedido` es libre. Puede ser cualquier descripcion corta, por
 ejemplo `pizza familiar`, `camiseta`, `mercado semanal`, `medicamento` o
@@ -246,20 +254,30 @@ ejemplo, `45000`, `120000` o `35000.50`.
 Destinos validos incluidos en el mapa:
 
 ```text
-Barrio Norte
-Barrio Sur
-Bodega
-Centro
-Cliente Ana
-Cliente Luis
-Cliente Marta
-Hospital
-Parque
-Universidad
-Zona Comercial
+Ana
+Bruno
+Camila
+Diego
+Elena
+Fabio
+Gabriela
+Hugo
+Irene
+Julian
+Karla
+Lucas
+Mariana
+Nicolas
+Olivia
+Pablo
+Renata
+Samuel
+Valentina
+Zoe
 ```
 
-El proyecto incluye el archivo `pedidos_ejemplo.txt` para probar la carga.
+El proyecto incluye `pedidos_ejemplo.txt` para una prueba corta y
+`pedidos_20_ejemplo.txt` para probar los 20 destinos de clientes.
 
 ## 10. Funcionamiento de la interfaz grafica
 
@@ -293,9 +311,9 @@ repartidor cambia su ubicacion al destino entregado.
 Supongamos que se cargan estos pedidos:
 
 ```text
-Ana;pizza familiar;alta;45000;Cliente Ana
-Luis;camiseta;baja;120000;Cliente Luis
-Marta;mercado semanal;media;90000;Cliente Marta
+Ana;pizza familiar;alta;45000;Ana
+Luis;camiseta;baja;120000;Lucas
+Marta;mercado semanal;media;90000;Mariana
 ```
 
 Si se usa prioridad, el sistema los ordena asi:

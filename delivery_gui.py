@@ -1,0 +1,480 @@
+"""Interfaz grafica simple para el sistema de entregas.
+
+La ventana permite visualizar el mapa como grafo, registrar pedidos, observar la
+cola de prioridad y procesar entregas resaltando la ruta calculada con
+Dijkstra.
+"""
+
+from __future__ import annotations
+
+import tkinter as tk
+from dataclasses import dataclass
+from math import isinf
+from tkinter import filedialog, messagebox, ttk
+
+from city_graph import (
+    DEFAULT_CITY_POSITIONS,
+    RouteResult,
+    WeightedGraph,
+    build_default_city_graph,
+)
+from order_file import read_orders_from_txt
+from orders import DeliveryOrder, PRIORITY_TYPES, PriorityOrderQueue
+
+
+DEFAULT_START_LOCATION = "Bodega"
+
+
+@dataclass(frozen=True)
+class DeliveryRecord:
+    """Resumen de una entrega realizada desde la interfaz."""
+
+    order: DeliveryOrder
+    route: RouteResult
+
+
+class DeliveryGUI:
+    """Ventana principal del simulador grafico de entregas."""
+
+    def __init__(self) -> None:
+        """Configura el estado inicial de la aplicacion grafica."""
+        self.graph: WeightedGraph = build_default_city_graph()
+        self.positions = DEFAULT_CITY_POSITIONS
+        self.order_queue = PriorityOrderQueue()
+        self.current_location = DEFAULT_START_LOCATION
+        self.delivery_records: list[DeliveryRecord] = []
+        self.total_time = 0.0
+        self.last_route: RouteResult | None = None
+
+        self.root = tk.Tk()
+        self.root.title("Rutas de entrega con Dijkstra")
+        self.root.geometry("1180x700")
+        self.root.minsize(1080, 640)
+
+        self._configure_style()
+        self._build_layout()
+        self._refresh_all()
+
+    def run(self) -> None:
+        """Inicia el ciclo principal de Tkinter."""
+        self.root.mainloop()
+
+    def _configure_style(self) -> None:
+        """Define estilos basicos para widgets ttk."""
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("TButton", padding=6)
+        style.configure("TLabel", padding=2)
+        style.configure("Title.TLabel", font=("Segoe UI", 15, "bold"))
+        style.configure("Section.TLabelframe.Label", font=("Segoe UI", 10, "bold"))
+
+    def _build_layout(self) -> None:
+        """Crea los paneles principales de la interfaz."""
+        self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=0)
+        self.root.rowconfigure(0, weight=1)
+
+        map_frame = ttk.Frame(self.root, padding=12)
+        map_frame.grid(row=0, column=0, sticky="nsew")
+        map_frame.rowconfigure(1, weight=1)
+        map_frame.columnconfigure(0, weight=1)
+
+        title = ttk.Label(
+            map_frame,
+            text="Mapa de entregas: grafo de la ciudad",
+            style="Title.TLabel",
+        )
+        title.grid(row=0, column=0, sticky="w")
+
+        self.canvas = tk.Canvas(
+            map_frame,
+            width=820,
+            height=560,
+            bg="#f7fafc",
+            highlightthickness=1,
+            highlightbackground="#cbd5e1",
+        )
+        self.canvas.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+
+        side_frame = ttk.Frame(self.root, padding=(0, 12, 12, 12), width=330)
+        side_frame.grid(row=0, column=1, sticky="ns")
+        side_frame.grid_propagate(False)
+
+        self._build_order_form(side_frame)
+        self._build_pending_panel(side_frame)
+        self._build_actions_panel(side_frame)
+        self._build_report_panel(side_frame)
+
+    def _build_order_form(self, parent: ttk.Frame) -> None:
+        """Crea el formulario para registrar pedidos."""
+        form = ttk.LabelFrame(parent, text="Registrar pedido", padding=10)
+        form.pack(fill="x", pady=(0, 10))
+
+        ttk.Label(form, text="Cliente").pack(anchor="w")
+        self.customer_entry = ttk.Entry(form)
+        self.customer_entry.pack(fill="x", pady=(0, 8))
+
+        ttk.Label(form, text="Tipo de pedido").pack(anchor="w")
+        self.product_type_combo = ttk.Combobox(
+            form,
+            values=list(PRIORITY_TYPES.keys()),
+            state="readonly",
+        )
+        self.product_type_combo.current(0)
+        self.product_type_combo.pack(fill="x", pady=(0, 8))
+
+        ttk.Label(form, text="Destino").pack(anchor="w")
+        self.destination_combo = ttk.Combobox(
+            form,
+            values=self.graph.nodes(),
+            state="readonly",
+        )
+        self.destination_combo.set("Cliente Ana")
+        self.destination_combo.pack(fill="x", pady=(0, 10))
+
+        ttk.Button(form, text="Agregar pedido", command=self.add_order).pack(fill="x")
+        ttk.Button(
+            form,
+            text="Cargar pedidos desde TXT",
+            command=self.load_orders_from_txt,
+        ).pack(fill="x", pady=(6, 0))
+
+    def _build_pending_panel(self, parent: ttk.Frame) -> None:
+        """Crea el panel de pedidos pendientes."""
+        pending = ttk.LabelFrame(parent, text="Cola de prioridad", padding=10)
+        pending.pack(fill="both", expand=True, pady=(0, 10))
+
+        self.pending_listbox = tk.Listbox(
+            pending,
+            height=9,
+            activestyle="dotbox",
+            exportselection=False,
+        )
+        self.pending_listbox.pack(side="left", fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(
+            pending,
+            orient="vertical",
+            command=self.pending_listbox.yview,
+        )
+        scrollbar.pack(side="right", fill="y")
+        self.pending_listbox.configure(yscrollcommand=scrollbar.set)
+
+    def _build_actions_panel(self, parent: ttk.Frame) -> None:
+        """Crea botones de procesamiento y consulta de rutas."""
+        actions = ttk.LabelFrame(parent, text="Acciones", padding=10)
+        actions.pack(fill="x", pady=(0, 10))
+
+        ttk.Button(
+            actions,
+            text="Calcular ruta al destino",
+            command=self.preview_route_to_destination,
+        ).pack(fill="x", pady=(0, 6))
+
+        ttk.Button(
+            actions,
+            text="Procesar siguiente pedido",
+            command=self.process_next_order,
+        ).pack(fill="x", pady=(0, 6))
+
+        ttk.Button(
+            actions,
+            text="Procesar todos",
+            command=self.process_all_orders,
+        ).pack(fill="x")
+
+    def _build_report_panel(self, parent: ttk.Frame) -> None:
+        """Crea el panel de estado y reporte."""
+        report = ttk.LabelFrame(parent, text="Reporte", padding=10)
+        report.pack(fill="both", expand=True)
+
+        self.status_label = ttk.Label(report, text="", justify="left")
+        self.status_label.pack(anchor="w", fill="x", pady=(0, 8))
+
+        self.route_text = tk.Text(report, height=9, wrap="word")
+        self.route_text.pack(fill="both", expand=True)
+        self.route_text.configure(state="disabled")
+
+    def add_order(self) -> None:
+        """Agrega un pedido a la cola y actualiza el mapa."""
+        customer = self.customer_entry.get().strip()
+        product_type = self.product_type_combo.get().strip()
+        destination = self.destination_combo.get().strip()
+
+        if not customer:
+            messagebox.showwarning("Dato faltante", "Ingrese el nombre del cliente.")
+            return
+
+        try:
+            order = self.order_queue.add_order(customer, product_type, destination)
+        except ValueError as error:
+            messagebox.showerror("Pedido no valido", str(error))
+            return
+
+        self.customer_entry.delete(0, tk.END)
+        self._set_route_message(
+            f"Pedido #{order.order_id} agregado.\n"
+            f"Prioridad: {order.priority_label}.\n"
+            f"Destino: {order.destination}."
+        )
+        self._refresh_all()
+
+    def load_orders_from_txt(self) -> None:
+        """Carga varios pedidos desde un archivo TXT."""
+        path = filedialog.askopenfilename(
+            title="Seleccionar archivo de pedidos",
+            filetypes=[
+                ("Archivos de texto", "*.txt"),
+                ("Archivos CSV", "*.csv"),
+                ("Todos los archivos", "*.*"),
+            ],
+        )
+
+        if not path:
+            return
+
+        try:
+            order_inputs = read_orders_from_txt(path)
+        except OSError as error:
+            messagebox.showerror("No se pudo leer el archivo", str(error))
+            return
+        except ValueError as error:
+            messagebox.showerror("Formato invalido", str(error))
+            return
+
+        loaded_orders: list[DeliveryOrder] = []
+        errors: list[str] = []
+
+        for order_input in order_inputs:
+            if not self.graph.has_node(order_input.destination):
+                errors.append(
+                    f"Linea {order_input.line_number}: destino inexistente "
+                    f"'{order_input.destination}'."
+                )
+                continue
+
+            try:
+                loaded_orders.append(
+                    self.order_queue.add_order(
+                        customer_name=order_input.customer_name,
+                        product_type=order_input.product_type,
+                        destination=order_input.destination,
+                    )
+                )
+            except ValueError as error:
+                errors.append(f"Linea {order_input.line_number}: {error}")
+
+        message = f"Pedidos cargados correctamente: {len(loaded_orders)}"
+
+        if errors:
+            message += "\n\nLineas no cargadas:\n" + "\n".join(errors)
+
+        self._set_route_message(message)
+        self._refresh_all()
+        messagebox.showinfo("Carga finalizada", message)
+
+    def preview_route_to_destination(self) -> None:
+        """Calcula una ruta desde la ubicacion actual al destino seleccionado."""
+        destination = self.destination_combo.get().strip()
+        route = self.graph.dijkstra(self.current_location, destination)
+        self.last_route = route
+        self._set_route_message(self._format_route_message(route))
+        self._refresh_all()
+
+    def process_next_order(self) -> None:
+        """Atiende el siguiente pedido segun prioridad y orden de llegada."""
+        order = self.order_queue.pop_next()
+
+        if order is None:
+            messagebox.showinfo("Sin pedidos", "No hay pedidos pendientes.")
+            return
+
+        route = self.graph.dijkstra(self.current_location, order.destination)
+        self.last_route = route
+        self.delivery_records.append(DeliveryRecord(order=order, route=route))
+
+        if not isinf(route.total_cost):
+            self.current_location = order.destination
+            self.total_time += route.total_cost
+
+        self._set_route_message(
+            f"Pedido entregado: #{order.order_id}\n"
+            f"Cliente: {order.customer_name}\n"
+            f"Tipo: {order.product_type} ({order.priority_label})\n\n"
+            f"{self._format_route_message(route)}"
+        )
+        self._refresh_all()
+
+    def process_all_orders(self) -> None:
+        """Procesa todos los pedidos pendientes."""
+        if self.order_queue.is_empty():
+            messagebox.showinfo("Sin pedidos", "No hay pedidos pendientes.")
+            return
+
+        while not self.order_queue.is_empty():
+            self.process_next_order()
+
+        messagebox.showinfo("Entregas finalizadas", "Todos los pedidos fueron procesados.")
+
+    def _refresh_all(self) -> None:
+        """Actualiza lista, reporte y canvas."""
+        self._refresh_pending_list()
+        self._refresh_status()
+        self._draw_map()
+
+    def _refresh_pending_list(self) -> None:
+        """Actualiza la lista visible de pedidos pendientes."""
+        self.pending_listbox.delete(0, tk.END)
+
+        for order in self.order_queue.peek_all():
+            self.pending_listbox.insert(tk.END, self._format_order_summary(order))
+
+    def _refresh_status(self) -> None:
+        """Actualiza el resumen visible del estado de la simulacion."""
+        self.status_label.configure(
+            text=(
+                f"Ubicacion actual: {self.current_location}\n"
+                f"Pendientes: {len(self.order_queue)}\n"
+                f"Entregados: {len(self.delivery_records)}\n"
+                f"Tiempo total: {self.total_time:g} min"
+            )
+        )
+
+    def _draw_map(self) -> None:
+        """Dibuja el grafo, pedidos y ruta actual en el canvas."""
+        self.canvas.delete("all")
+        highlighted_edges = self._route_edges(self.last_route)
+        pending_destinations = {order.destination for order in self.order_queue.peek_all()}
+
+        for origin, destination, cost in self.graph.edges():
+            x1, y1 = self.positions[origin]
+            x2, y2 = self.positions[destination]
+            edge_key = frozenset({origin, destination})
+            is_highlighted = edge_key in highlighted_edges
+            color = "#16a34a" if is_highlighted else "#94a3b8"
+            width = 5 if is_highlighted else 2
+
+            self.canvas.create_line(x1, y1, x2, y2, fill=color, width=width)
+            self.canvas.create_text(
+                (x1 + x2) / 2,
+                (y1 + y2) / 2 - 10,
+                text=f"{cost:g}",
+                fill="#334155",
+                font=("Segoe UI", 9, "bold"),
+            )
+
+        for node in self.graph.nodes():
+            x, y = self.positions[node]
+            fill = "#ffffff"
+            outline = "#334155"
+            width = 2
+
+            if node == DEFAULT_START_LOCATION:
+                fill = "#dbeafe"
+                outline = "#2563eb"
+            if node in pending_destinations:
+                fill = "#fee2e2"
+                outline = "#dc2626"
+                width = 3
+            if node == self.current_location:
+                fill = "#dcfce7"
+                outline = "#16a34a"
+                width = 4
+
+            self.canvas.create_oval(
+                x - 20,
+                y - 20,
+                x + 20,
+                y + 20,
+                fill=fill,
+                outline=outline,
+                width=width,
+            )
+            self.canvas.create_text(
+                x,
+                y + 34,
+                text=node,
+                fill="#0f172a",
+                font=("Segoe UI", 9, "bold"),
+            )
+
+        self._draw_legend()
+
+    def _draw_legend(self) -> None:
+        """Dibuja una leyenda breve en el mapa."""
+        x, y = 20, 20
+        items = [
+            ("#dcfce7", "#16a34a", "Ubicacion actual"),
+            ("#fee2e2", "#dc2626", "Destino pendiente"),
+            ("#dbeafe", "#2563eb", "Bodega"),
+            ("#16a34a", "#16a34a", "Ruta calculada"),
+        ]
+
+        self.canvas.create_rectangle(10, 10, 210, 118, fill="#ffffff", outline="#cbd5e1")
+        for index, (fill, outline, label) in enumerate(items):
+            item_y = y + index * 24
+            if label == "Ruta calculada":
+                self.canvas.create_line(x, item_y, x + 22, item_y, fill=outline, width=4)
+            else:
+                self.canvas.create_oval(
+                    x,
+                    item_y - 8,
+                    x + 16,
+                    item_y + 8,
+                    fill=fill,
+                    outline=outline,
+                    width=2,
+                )
+            self.canvas.create_text(
+                x + 32,
+                item_y,
+                text=label,
+                anchor="w",
+                fill="#0f172a",
+                font=("Segoe UI", 9),
+            )
+
+    def _route_edges(self, route: RouteResult | None) -> set[frozenset[str]]:
+        """Convierte una ruta en un conjunto de aristas resaltables."""
+        if route is None or not route.path:
+            return set()
+
+        return {
+            frozenset({route.path[index], route.path[index + 1]})
+            for index in range(len(route.path) - 1)
+        }
+
+    def _format_route_message(self, route: RouteResult) -> str:
+        """Devuelve la ruta calculada en texto."""
+        if isinf(route.total_cost):
+            return f"No existe ruta entre {route.origin} y {route.destination}."
+
+        return (
+            f"Ruta: {' -> '.join(route.path)}\n"
+            f"Tiempo estimado: {route.total_cost:g} minutos\n"
+            f"Nodos revisados: {', '.join(route.visited_nodes)}"
+        )
+
+    def _format_order_summary(self, order: DeliveryOrder) -> str:
+        """Devuelve un pedido pendiente como linea corta."""
+        return (
+            f"#{order.order_id} | {order.priority_label.upper()} | "
+            f"{order.product_type} | {order.destination}"
+        )
+
+    def _set_route_message(self, message: str) -> None:
+        """Actualiza el panel de texto de ruta y reporte."""
+        self.route_text.configure(state="normal")
+        self.route_text.delete("1.0", tk.END)
+        self.route_text.insert(tk.END, message)
+        self.route_text.configure(state="disabled")
+
+
+def main() -> None:
+    """Inicia la interfaz grafica."""
+    app = DeliveryGUI()
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

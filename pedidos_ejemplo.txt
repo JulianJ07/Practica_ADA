@@ -1,0 +1,6 @@
+cliente;tipo_pedido;destino
+Ana;comida preparada;Cliente Ana
+Luis;camiseta;Cliente Luis
+Marta;mercado;Cliente Marta
+Carlos;comida preparada;Cliente Luis
+Sofia;mercado;Cliente Ana

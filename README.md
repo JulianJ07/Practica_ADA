@@ -150,10 +150,14 @@ atiende el avion que tiene activo y desembarca tantos pasajeros como permita su
 capacidad. Cuando un avion termina, la terminal pasa al siguiente avion asignado
 en el tick posterior.
 
-## 9. Estadisticas finales
+## 9. Reporte final en la terminal
 
-Al terminar la simulacion, el programa muestra un resumen con:
+Al terminar la simulacion, el programa imprime un reporte completo directamente
+en la terminal. Este reporte incluye:
 
+- estrategia simulada;
+- comparacion entre FIFO simple, aleatorio, greedy y fuerza bruta;
+- configuracion utilizada por cada terminal;
 - tiempo total del proceso;
 - total de pasajeros procesados;
 - promedio general de pasajeros desembarcados por tick;
@@ -169,9 +173,9 @@ recursos se aprovecharon correctamente.
 
 ## 10. Exportacion de resultados
 
-Al finalizar, el programa pregunta si se desean exportar los resultados. Si el
-usuario responde que si, se crea automaticamente una carpeta llamada `reports`
-y se generan dos archivos:
+Despues de mostrar el reporte en la terminal, el programa pregunta si se desean
+exportar los resultados. Si el usuario responde que si, se crea automaticamente
+una carpeta llamada `reports` y se generan dos archivos:
 
 - un archivo `.txt` con el reporte general de la simulacion;
 - un archivo `.csv` con el registro detallado de cada tick.
@@ -230,7 +234,7 @@ El programa mostrara:
 - una comparacion de estrategias;
 - la configuracion recomendada por greedy;
 - el avance de la simulacion tick por tick;
-- estadisticas finales;
+- el reporte final directamente en la terminal;
 - rutas de los archivos exportados, si el usuario decide generarlos.
 
 ## 14. Reporte del trabajo

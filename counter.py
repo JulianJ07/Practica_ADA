@@ -511,33 +511,52 @@ def calculate_statistics(
     )
 
 
-def show_final_statistics(statistics: SimulationStatistics) -> None:
-    """Muestra las estadisticas finales de la simulacion."""
-    print("\nESTADISTICAS FINALES")
-    print("-" * 88)
-    print(f"Tiempo total: {statistics.total_ticks} tick(s)")
+def show_report_in_terminal(
+    selected_result: AlgorithmResult,
+    comparison_results: list[AlgorithmResult],
+    brute_force_note: str | None,
+    simulation_result: SimulationResult,
+    statistics: SimulationStatistics,
+) -> None:
+    """Imprime un reporte final completo directamente en la terminal."""
+    print("\nREPORTE FINAL DE LA SIMULACION")
+    print("=" * 88)
+    print(f"Estrategia simulada: {selected_result.name}")
+    print(f"Tiempo total del desembarco: {simulation_result.total_ticks} tick(s)")
     print(f"Total de pasajeros procesados: {statistics.total_passengers}")
     print(
         "Promedio general de pasajeros por tick: "
         f"{statistics.average_passengers_per_tick:.2f}"
     )
-    print(
-        "Terminal mas usada: "
-        f"{statistics.most_used_terminal.terminal_code} "
-        f"({statistics.most_used_terminal.work_ticks} tick(s) de trabajo)"
-    )
-    print(
-        "Terminal menos usada: "
-        f"{statistics.least_used_terminal.terminal_code} "
-        f"({statistics.least_used_terminal.work_ticks} tick(s) de trabajo)"
-    )
+    print("=" * 88)
+
+    print("\n1. Comparacion de estrategias")
+    print("-" * 88)
+    print(f"{'Estrategia':<18}{'Ticks estimados':<18}{'Observacion'}")
+    print("-" * 88)
+    for result in sorted(comparison_results, key=lambda item: item.estimated_ticks):
+        marker = " <- estrategia simulada" if result.name == selected_result.name else ""
+        print(f"{result.name:<18}{result.estimated_ticks:<18}{result.description}{marker}")
+
+    if brute_force_note:
+        print(brute_force_note)
+
+    print("\n2. Configuracion utilizada")
+    print("-" * 88)
+    for terminal in selected_result.terminals:
+        print(
+            f"{terminal.code}: capacidad {terminal.capacity} pasajeros/tick, "
+            f"{terminal.estimated_total_ticks()} tick(s) estimados"
+        )
+        print(f"   Aviones: {format_assigned_planes(terminal)}")
+
+    print("\n3. Estadisticas por terminal")
     print("-" * 88)
     print(
         f"{'Terminal':<12}{'Aviones':<10}{'Pasajeros':<12}"
         f"{'Ticks':<10}{'Promedio/tick'}"
     )
     print("-" * 88)
-
     for item in statistics.terminals:
         print(
             f"{item.terminal_code:<12}"
@@ -546,6 +565,24 @@ def show_final_statistics(statistics: SimulationStatistics) -> None:
             f"{item.work_ticks:<10}"
             f"{item.average_passengers_per_tick:.2f}"
         )
+
+    print("\n4. Conclusiones")
+    print("-" * 88)
+    print(
+        "Terminal mas usada: "
+        f"{statistics.most_used_terminal.terminal_code} "
+        f"con {statistics.most_used_terminal.work_ticks} tick(s) de trabajo."
+    )
+    print(
+        "Terminal menos usada: "
+        f"{statistics.least_used_terminal.terminal_code} "
+        f"con {statistics.least_used_terminal.work_ticks} tick(s) de trabajo."
+    )
+    print(
+        "El algoritmo greedy entrega una solucion aproximada: suele mejorar "
+        "estrategias simples, aunque no siempre garantiza el resultado optimo."
+    )
+    print("=" * 88)
 
 
 def export_results(
@@ -657,7 +694,13 @@ def main() -> None:
         selected_result.terminals,
         simulation_result.total_ticks,
     )
-    show_final_statistics(statistics)
+    show_report_in_terminal(
+        selected_result=selected_result,
+        comparison_results=comparison_results,
+        brute_force_note=brute_force_note,
+        simulation_result=simulation_result,
+        statistics=statistics,
+    )
 
     if read_yes_no("\nDesea exportar los resultados a TXT y CSV? (s/n): "):
         txt_path, csv_path = export_results(

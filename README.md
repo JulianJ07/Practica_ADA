@@ -1,7 +1,7 @@
 # Sistema de rutas de entrega con grafos, Dijkstra, prioridad y Merge Sort
 ---
 
-# Grupo: chococonos.
+## Grupo: chococonos.
 
 ---
 

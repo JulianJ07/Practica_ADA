@@ -51,16 +51,16 @@ de datos y algoritmos. La aplicacion busca:
 ### Grafo ponderado
 
 El mapa de la ciudad se representa como un grafo. Los nodos son lugares como la
-bodega, barrios, zonas comerciales y 20 clientes distintos. Las aristas son
-calles que conectan esos lugares. Cada arista tiene un peso que representa el
-tiempo estimado de recorrido en minutos.
+bodega, zonas intermedias y 8 clientes distintos. Las aristas son calles que
+conectan esos lugares. Cada arista tiene un peso que representa el tiempo
+estimado de recorrido en minutos.
 
 Ejemplo:
 
 ```text
 Bodega -- Centro: 4 minutos
 Centro -- Hospital: 5 minutos
-Hospital -- Renata: 3 minutos
+Hospital -- Camila: 3 minutos
 ```
 
 ### Algoritmo de Dijkstra
@@ -163,6 +163,7 @@ En la aplicacion el usuario puede:
 - calcular una ruta completa de pedidos pendientes desde la bodega;
 - procesar el siguiente pedido;
 - procesar todos los pedidos pendientes;
+- limpiar el lote actual de pedidos y reiniciar la simulacion desde la bodega;
 - observar la ruta resaltada en la interfaz grafica;
 - consultar un reporte final de entregas.
 
@@ -178,7 +179,7 @@ Practica_ADA/
 |-- main.py              # Entrada para modo consola
 |-- gui.py               # Entrada para interfaz grafica
 |-- pedidos_ejemplo.txt  # Archivo de pedidos de ejemplo
-|-- pedidos_20_ejemplo.txt # Archivo con 20 pedidos de prueba
+|-- pedidos_8_ejemplo.txt # Archivo con 8 pedidos de prueba
 |-- README.md
 `-- .gitignore
 ```
@@ -217,8 +218,8 @@ coma:
 ```text
 cliente;tipo_pedido;prioridad;precio;destino
 Ana;pizza familiar;alta;45000;Ana
-Luis;camiseta;baja;120000;Lucas
-Marta;mercado semanal;media;90000;Mariana
+Luis;camiseta;baja;120000;Diego
+Marta;mercado semanal;media;90000;Fabio
 ```
 
 El archivo puede incluir una fila de encabezado. Tambien se pueden usar lineas
@@ -262,22 +263,10 @@ Elena
 Fabio
 Gabriela
 Hugo
-Irene
-Julian
-Karla
-Lucas
-Mariana
-Nicolas
-Olivia
-Pablo
-Renata
-Samuel
-Valentina
-Zoe
 ```
 
 El proyecto incluye `pedidos_ejemplo.txt` para una prueba corta y
-`pedidos_20_ejemplo.txt` para probar los 20 destinos de clientes.
+`pedidos_8_ejemplo.txt` para probar los 8 destinos de clientes.
 
 ## 10. Funcionamiento de la interfaz grafica
 
@@ -289,6 +278,10 @@ precio del pedido o cargar pedidos desde TXT.
 El boton `ORDENAR POR PRECIO` cambia el criterio activo y organiza los pedidos
 pendientes con Merge Sort de mayor a menor precio. El boton `Ordenar por
 prioridad` vuelve al criterio de urgencia y orden de llegada.
+
+El boton `Limpiar pedidos` elimina los pedidos pendientes y entregados del lote
+actual, borra la ruta resaltada, reinicia el tiempo total y vuelve a ubicar al
+repartidor en `Bodega`.
 
 El boton `Calcular ruta de pedidos desde Bodega` no entrega pedidos ni cambia la
 ubicacion real del repartidor. Su funcion es planificar el recorrido completo de
@@ -312,8 +305,8 @@ Supongamos que se cargan estos pedidos:
 
 ```text
 Ana;pizza familiar;alta;45000;Ana
-Luis;camiseta;baja;120000;Lucas
-Marta;mercado semanal;media;90000;Mariana
+Luis;camiseta;baja;120000;Diego
+Marta;mercado semanal;media;90000;Fabio
 ```
 
 Si se usa prioridad, el sistema los ordena asi:

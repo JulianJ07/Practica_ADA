@@ -1,0 +1,9 @@
+cliente;tipo_pedido;prioridad;precio;destino
+Valentina;hamburguesa doble;alta;38000;Ana
+Mateo;zapatos deportivos;media;210000;Bruno
+Carolina;mercado familiar;alta;185000;Camila
+Santiago;audifonos bluetooth;baja;95000;Diego
+Laura;medicamento urgente;alta;42000;Elena
+Daniel;camiseta estampada;baja;65000;Fabio
+Isabella;documentos legales;media;30000;Gabriela
+Sebastian;ramo de flores;media;78000;Hugo

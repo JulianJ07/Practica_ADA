@@ -208,6 +208,12 @@ class DeliveryGUI:
             actions,
             text="Procesar todos",
             command=self.process_all_orders,
+        ).pack(fill="x", pady=(0, 6))
+
+        ttk.Button(
+            actions,
+            text="Limpiar pedidos",
+            command=self.clear_orders,
         ).pack(fill="x")
 
     def _build_report_panel(self, parent: ttk.Frame) -> None:
@@ -423,6 +429,15 @@ class DeliveryGUI:
             self.process_next_order()
 
         messagebox.showinfo("Entregas finalizadas", "Todos los pedidos fueron procesados.")
+
+    def clear_orders(self) -> None:
+        """Limpia los pedidos y reinicia la simulacion del lote actual."""
+        self._reset_for_new_order_list()
+        self._set_route_message(
+            "Pedidos limpiados.\n"
+            "La simulacion volvio a iniciar desde Bodega."
+        )
+        self._refresh_all()
 
     def _refresh_all(self) -> None:
         """Actualiza lista, reporte y canvas."""

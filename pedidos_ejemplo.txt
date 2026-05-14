@@ -1,6 +1,6 @@
 cliente;tipo_pedido;prioridad;precio;destino
 Ana;pizza familiar;alta;45000;Ana
-Luis;camiseta;baja;120000;Lucas
-Marta;mercado semanal;media;90000;Mariana
+Luis;camiseta;baja;120000;Diego
+Marta;mercado semanal;media;90000;Fabio
 Carlos;medicamento;alta;30000;Bruno
 Sofia;documentos;media;15000;Elena

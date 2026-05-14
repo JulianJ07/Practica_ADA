@@ -1,8 +1,8 @@
 """Interfaz grafica simple para el sistema de entregas.
 
-La ventana permite visualizar el mapa como grafo, registrar pedidos, observar la
-cola de prioridad y procesar entregas resaltando la ruta calculada con
-Dijkstra.
+La ventana permite visualizar el mapa como grafo, registrar pedidos, ordenar por
+prioridad o por precio mayor y procesar entregas resaltando la ruta calculada
+con Dijkstra.
 """
 
 from __future__ import annotations
@@ -19,7 +19,12 @@ from city_graph import (
     build_default_city_graph,
 )
 from order_file import read_orders_from_txt
-from orders import DeliveryOrder, PRIORITY_LEVELS, PriorityOrderQueue
+from orders import (
+    DeliveryOrder,
+    PRIORITY_LEVELS,
+    PriorityOrderQueue,
+    get_sort_mode_text,
+)
 
 
 DEFAULT_START_LOCATION = "Bodega"
@@ -127,6 +132,10 @@ class DeliveryGUI:
         self.priority_combo.current(0)
         self.priority_combo.pack(fill="x", pady=(0, 8))
 
+        ttk.Label(form, text="Precio total").pack(anchor="w")
+        self.price_entry = ttk.Entry(form)
+        self.price_entry.pack(fill="x", pady=(0, 8))
+
         ttk.Label(form, text="Destino").pack(anchor="w")
         self.destination_combo = ttk.Combobox(
             form,
@@ -145,7 +154,7 @@ class DeliveryGUI:
 
     def _build_pending_panel(self, parent: ttk.Frame) -> None:
         """Crea el panel de pedidos pendientes."""
-        pending = ttk.LabelFrame(parent, text="Cola de prioridad", padding=10)
+        pending = ttk.LabelFrame(parent, text="Pedidos pendientes", padding=10)
         pending.pack(fill="both", expand=True, pady=(0, 10))
 
         self.pending_listbox = tk.Listbox(
@@ -177,6 +186,18 @@ class DeliveryGUI:
 
         ttk.Button(
             actions,
+            text="Ordenar por prioridad",
+            command=self.order_by_priority,
+        ).pack(fill="x", pady=(0, 6))
+
+        ttk.Button(
+            actions,
+            text="ORDENAR POR PRECIO",
+            command=self.order_by_price,
+        ).pack(fill="x", pady=(0, 6))
+
+        ttk.Button(
+            actions,
             text="Procesar siguiente pedido",
             command=self.process_next_order,
         ).pack(fill="x", pady=(0, 6))
@@ -204,6 +225,7 @@ class DeliveryGUI:
         customer = self.customer_entry.get().strip()
         product_type = self.product_type_entry.get().strip()
         priority = self.priority_combo.get().strip()
+        price = self.price_entry.get().strip()
         destination = self.destination_combo.get().strip()
 
         if not customer:
@@ -215,6 +237,7 @@ class DeliveryGUI:
                 customer,
                 product_type,
                 priority,
+                price,
                 destination,
             )
         except ValueError as error:
@@ -223,9 +246,11 @@ class DeliveryGUI:
 
         self.customer_entry.delete(0, tk.END)
         self.product_type_entry.delete(0, tk.END)
+        self.price_entry.delete(0, tk.END)
         self._set_route_message(
             f"Pedido #{order.order_id} agregado.\n"
             f"Prioridad: {order.priority_label}.\n"
+            f"Precio: ${order.price:g}.\n"
             f"Destino: {order.destination}."
         )
         self._refresh_all()
@@ -270,6 +295,7 @@ class DeliveryGUI:
                         customer_name=order_input.customer_name,
                         product_type=order_input.product_type,
                         priority=order_input.priority,
+                        price=order_input.price,
                         destination=order_input.destination,
                     )
                 )
@@ -285,6 +311,20 @@ class DeliveryGUI:
         self._refresh_all()
         messagebox.showinfo("Carga finalizada", message)
 
+    def order_by_priority(self) -> None:
+        """Activa la atencion por prioridad y llegada."""
+        self.order_queue.use_priority_order()
+        self._set_route_message("Pedidos ordenados por prioridad y orden de llegada.")
+        self._refresh_all()
+
+    def order_by_price(self) -> None:
+        """Activa la atencion por precio mayor usando Merge Sort."""
+        self.order_queue.use_price_order()
+        self._set_route_message(
+            "Pedidos ordenados por precio mayor usando Merge Sort."
+        )
+        self._refresh_all()
+
     def preview_route_to_destination(self) -> None:
         """Calcula una ruta desde la ubicacion actual al destino seleccionado."""
         destination = self.destination_combo.get().strip()
@@ -294,7 +334,7 @@ class DeliveryGUI:
         self._refresh_all()
 
     def process_next_order(self) -> None:
-        """Atiende el siguiente pedido segun prioridad y orden de llegada."""
+        """Atiende el siguiente pedido segun el criterio activo."""
         order = self.order_queue.pop_next()
 
         if order is None:
@@ -312,7 +352,9 @@ class DeliveryGUI:
         self._set_route_message(
             f"Pedido entregado: #{order.order_id}\n"
             f"Cliente: {order.customer_name}\n"
-            f"Tipo: {order.product_type} ({order.priority_label})\n\n"
+            f"Tipo: {order.product_type}\n"
+            f"Prioridad: {order.priority_label}\n"
+            f"Precio: ${order.price:g}\n\n"
             f"{self._format_route_message(route)}"
         )
         self._refresh_all()
@@ -346,6 +388,7 @@ class DeliveryGUI:
         self.status_label.configure(
             text=(
                 f"Ubicacion actual: {self.current_location}\n"
+                f"Criterio: {get_sort_mode_text(self.order_queue.sort_mode)}\n"
                 f"Pendientes: {len(self.order_queue)}\n"
                 f"Entregados: {len(self.delivery_records)}\n"
                 f"Tiempo total: {self.total_time:g} min"
@@ -470,8 +513,9 @@ class DeliveryGUI:
     def _format_order_summary(self, order: DeliveryOrder) -> str:
         """Devuelve un pedido pendiente como linea corta."""
         return (
-            f"#{order.order_id} | {order.priority_label.upper()} | "
-            f"{order.product_type} | {order.destination}"
+            f"#{order.order_id} | ${order.price:g} | "
+            f"{order.priority_label.upper()} | {order.product_type} | "
+            f"{order.destination}"
         )
 
     def _set_route_message(self, message: str) -> None:

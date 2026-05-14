@@ -18,6 +18,7 @@ from orders import (
     DeliveryOrder,
     PriorityOrderQueue,
     get_priority_options_text,
+    get_sort_mode_text,
 )
 
 
@@ -48,6 +49,7 @@ class DeliveryApp:
         print("=" * 78)
         print("SISTEMA DE RUTAS DE ENTREGA CON GRAFOS Y DIJKSTRA")
         print("=" * 78)
+        self.choose_sort_mode()
 
         while True:
             self._print_menu()
@@ -71,6 +73,8 @@ class DeliveryApp:
                 self.process_all_orders()
             elif option == "9":
                 self.show_final_report()
+            elif option == "10":
+                self.choose_sort_mode()
             elif option == "0":
                 print("Programa finalizado.")
                 break
@@ -101,6 +105,7 @@ class DeliveryApp:
         customer_name = input("Nombre del cliente: ").strip()
         product_type = input("Tipo de pedido: ").strip()
         priority = input("Prioridad del pedido (alta/media/baja): ").strip()
+        price = input("Precio total del pedido: ").strip()
         destination = self._read_location("Destino del pedido: ")
 
         try:
@@ -108,6 +113,7 @@ class DeliveryApp:
                 customer_name=customer_name,
                 product_type=product_type,
                 priority=priority,
+                price=price,
                 destination=destination,
             )
         except ValueError as error:
@@ -116,13 +122,14 @@ class DeliveryApp:
 
         print(
             f"Pedido #{order.order_id} registrado con prioridad "
-            f"{order.priority_label}."
+            f"{order.priority_label} y precio ${order.price:g}."
         )
 
     def show_pending_orders(self) -> None:
-        """Muestra la cola de pedidos en el orden de atencion."""
+        """Muestra los pedidos pendientes en el orden de atencion activo."""
         print("\nPEDIDOS PENDIENTES")
         print("-" * 78)
+        print(f"Criterio activo: {get_sort_mode_text(self.order_queue.sort_mode)}")
 
         pending_orders = self.order_queue.peek_all()
         if not pending_orders:
@@ -145,7 +152,7 @@ class DeliveryApp:
         """Carga pedidos desde un archivo TXT separado por punto y coma."""
         print("\nCARGAR PEDIDOS DESDE TXT")
         print("-" * 78)
-        print("Formato esperado: cliente;tipo_pedido;prioridad;destino")
+        print("Formato esperado: cliente;tipo_pedido;prioridad;precio;destino")
         path = input("Ruta del archivo TXT: ").strip().strip('"')
 
         try:
@@ -173,6 +180,7 @@ class DeliveryApp:
                     customer_name=order_input.customer_name,
                     product_type=order_input.product_type,
                     priority=order_input.priority,
+                    price=order_input.price,
                     destination=order_input.destination,
                 )
                 loaded_count += 1
@@ -196,11 +204,13 @@ class DeliveryApp:
 
         delivered_order = self._deliver_order(order)
         self.delivered_orders.append(delivered_order)
-        self.current_location = order.destination
-        self.total_delivery_time += delivered_order.route.total_cost
+
+        if not isinf(delivered_order.route.total_cost):
+            self.current_location = order.destination
+            self.total_delivery_time += delivered_order.route.total_cost
 
     def process_all_orders(self) -> None:
-        """Procesa todos los pedidos pendientes en orden de prioridad."""
+        """Procesa todos los pedidos pendientes segun el criterio activo."""
         if self.order_queue.is_empty():
             print("\nNo hay pedidos pendientes para entregar.")
             return
@@ -210,11 +220,34 @@ class DeliveryApp:
 
         print("\nTodos los pedidos pendientes fueron procesados.")
 
+    def choose_sort_mode(self) -> None:
+        """Permite escoger si los pedidos se atienden por prioridad o precio."""
+        print("\nCRITERIO DE ATENCION")
+        print("-" * 78)
+        print("1. Prioridad y orden de llegada")
+        print("2. Precio mayor usando Merge Sort")
+
+        while True:
+            option = input("Seleccione el criterio de atencion: ").strip()
+
+            if option == "1":
+                self.order_queue.use_priority_order()
+                print("Criterio activo: prioridad y orden de llegada.")
+                return
+
+            if option == "2":
+                self.order_queue.use_price_order()
+                print("Criterio activo: precio mayor usando Merge Sort.")
+                return
+
+            print("Opcion no valida. Escribe 1 o 2.")
+
     def show_final_report(self) -> None:
         """Muestra un reporte de pedidos entregados y tiempo recorrido."""
         print("\nREPORTE FINAL")
         print("=" * 78)
         print(f"Ubicacion actual del repartidor: {self.current_location}")
+        print(f"Criterio usado: {get_sort_mode_text(self.order_queue.sort_mode)}")
         print(f"Pedidos entregados: {len(self.delivered_orders)}")
         print(f"Pedidos pendientes: {len(self.order_queue)}")
         print(f"Tiempo total recorrido: {self.total_delivery_time:g} minutos")
@@ -235,8 +268,9 @@ class DeliveryApp:
             print("-" * 78)
 
         print(
-            "Conclusion: los pedidos se atendieron primero por prioridad y, "
-            "cuando compartian prioridad, por orden de llegada."
+            "Conclusion: los pedidos se atendieron segun el criterio activo. "
+            "Si se usa precio, Merge Sort organiza primero los pedidos de "
+            "mayor valor."
         )
         print("=" * 78)
 
@@ -280,13 +314,15 @@ class DeliveryApp:
         return (
             f"Pedido #{order.order_id} | Cliente: {order.customer_name} | "
             f"Tipo: {order.product_type} | Prioridad: {order.priority_label} | "
-            f"Llegada: {order.arrival_order} | Destino: {order.destination}"
+            f"Precio: ${order.price:g} | Llegada: {order.arrival_order} | "
+            f"Destino: {order.destination}"
         )
 
     def _print_menu(self) -> None:
         """Muestra las opciones principales."""
         print("\nMENU PRINCIPAL")
         print("-" * 78)
+        print(f"Criterio activo: {get_sort_mode_text(self.order_queue.sort_mode)}")
         print("1. Ver mapa de la ciudad")
         print("2. Ver puntos disponibles")
         print("3. Registrar pedido")
@@ -296,4 +332,5 @@ class DeliveryApp:
         print("7. Procesar siguiente pedido")
         print("8. Procesar todos los pedidos")
         print("9. Ver reporte final")
+        print("10. Cambiar criterio de atencion")
         print("0. Salir")

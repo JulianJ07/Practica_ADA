@@ -3,7 +3,7 @@
 El archivo esperado usa una linea por pedido con campos separados por punto y
 coma:
 
-cliente;tipo_pedido;prioridad;destino
+cliente;tipo_pedido;prioridad;precio;destino
 
 Tambien se permiten lineas vacias, comentarios iniciados con ``#`` y una fila
 de encabezado opcional.
@@ -23,6 +23,7 @@ class OrderInput:
     customer_name: str
     product_type: str
     priority: str
+    price: str
     destination: str
     line_number: int
 
@@ -37,7 +38,7 @@ def read_orders_from_txt(path: str | Path) -> list[OrderInput]:
         Lista de pedidos leidos del archivo.
 
     Raises:
-        ValueError: Si una linea no tiene los cuatro campos requeridos.
+        ValueError: Si una linea no tiene los cinco campos requeridos.
     """
     file_path = Path(path)
     orders: list[OrderInput] = []
@@ -58,10 +59,10 @@ def read_orders_from_txt(path: str | Path) -> list[OrderInput]:
             if _is_header(clean_row):
                 continue
 
-            if len(clean_row) != 4 or not all(clean_row):
+            if len(clean_row) != 5 or not all(clean_row):
                 raise ValueError(
                     f"Linea {line_number}: usa el formato "
-                    "cliente;tipo_pedido;prioridad;destino."
+                    "cliente;tipo_pedido;prioridad;precio;destino."
                 )
 
             orders.append(
@@ -69,7 +70,8 @@ def read_orders_from_txt(path: str | Path) -> list[OrderInput]:
                     customer_name=clean_row[0],
                     product_type=clean_row[1],
                     priority=clean_row[2],
-                    destination=clean_row[3],
+                    price=clean_row[3],
+                    destination=clean_row[4],
                     line_number=line_number,
                 )
             )
@@ -80,4 +82,4 @@ def read_orders_from_txt(path: str | Path) -> list[OrderInput]:
 def _is_header(row: list[str]) -> bool:
     """Detecta una fila de encabezado comun."""
     normalized = [value.lower().replace(" ", "_") for value in row]
-    return normalized == ["cliente", "tipo_pedido", "prioridad", "destino"]
+    return normalized == ["cliente", "tipo_pedido", "prioridad", "precio", "destino"]

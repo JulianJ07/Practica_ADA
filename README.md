@@ -1,11 +1,11 @@
-# Sistema de rutas de entrega con grafos, Dijkstra y cola de prioridad
+# Sistema de rutas de entrega con grafos, Dijkstra, prioridad y Merge Sort
 
 ## 1. Descripcion general
 
 Este proyecto es una aplicacion en Python que simula la gestion de pedidos para
 un repartidor. El sistema representa una ciudad como un grafo ponderado, calcula
-rutas cortas con el algoritmo de Dijkstra y organiza los pedidos usando una cola
-de prioridad.
+rutas cortas con el algoritmo de Dijkstra y organiza los pedidos por prioridad o
+por precio mayor.
 
 La aplicacion tiene dos formas de uso:
 
@@ -13,8 +13,8 @@ La aplicacion tiene dos formas de uso:
 - interfaz grafica simple, ejecutando `gui.py`.
 
 En la interfaz grafica se puede ver el mapa, registrar pedidos, cargar pedidos
-desde un archivo `.txt`, observar la cola de prioridad y procesar entregas con
-la ruta resaltada sobre el mapa.
+desde un archivo `.txt`, ordenar por prioridad, ordenar por precio mayor con
+Merge Sort y procesar entregas con la ruta resaltada sobre el mapa.
 
 ## 2. Problema que se desea resolver
 
@@ -28,7 +28,7 @@ Ademas, el repartidor debe moverse por una red de calles. Si el sistema no
 calcula una buena ruta, puede gastar mas tiempo del necesario y retrasar las
 entregas. Por esta razon, el programa combina dos necesidades:
 
-- decidir que pedido atender primero segun prioridad y orden de llegada;
+- decidir que pedido atender primero por prioridad o por precio mayor;
 - encontrar la ruta mas corta desde la ubicacion actual del repartidor hasta el
   destino del pedido.
 
@@ -40,7 +40,9 @@ de datos y algoritmos. La aplicacion busca:
 - representar la ciudad como un grafo ponderado;
 - usar Dijkstra para calcular rutas de menor costo;
 - organizar pedidos mediante una cola de prioridad;
-- respetar el orden de llegada cuando dos pedidos tienen la misma prioridad;
+- aplicar Merge Sort para ordenar pedidos por precio mayor;
+- respetar el orden de llegada cuando dos pedidos tienen la misma prioridad o el
+  mismo precio;
 - mostrar visualmente el mapa y las rutas en una interfaz sencilla;
 - generar un reporte basico de pedidos entregados y tiempo total recorrido.
 
@@ -93,10 +95,18 @@ Internamente, la prioridad se maneja asi:
 3 = baja
 ```
 
+### Merge Sort por precio
+
+Como funcion adicional, el programa puede ignorar la prioridad y ordenar los
+pedidos unicamente por precio. En este modo se usa Merge Sort para organizar los
+pedidos de mayor a menor valor. El pedido con mayor precio se entrega primero.
+Si dos pedidos tienen el mismo precio, se conserva primero el que llego antes.
+
 ### Listas
 
 Se usan listas para guardar el historial de pedidos entregados y para mostrar
-los pedidos pendientes en la interfaz.
+los pedidos pendientes en la interfaz. Tambien se usan como entrada para Merge
+Sort cuando se ordena por precio.
 
 ### Diccionarios
 
@@ -115,11 +125,16 @@ texto. Cada pedido contiene:
 - nombre del cliente;
 - tipo de pedido;
 - prioridad;
+- precio total del pedido;
 - destino.
 
 Cuando el pedido se registra, el sistema toma la prioridad escrita por el
-usuario o por el archivo TXT. Luego el pedido entra a una cola de prioridad. La
-cola ordena primero por urgencia y despues por orden de llegada.
+usuario o por el archivo TXT. Tambien registra el precio total del pedido.
+
+Antes de procesar entregas, el usuario decide si quiere usar el criterio de
+prioridad o el criterio de precio mayor. Si usa prioridad, los pedidos se
+atienden por urgencia y orden de llegada. Si usa precio mayor, el programa aplica
+Merge Sort y entrega primero los pedidos de mayor valor.
 
 Cuando el repartidor procesa un pedido, el sistema toma el primer pedido de la
 cola, calcula con Dijkstra la ruta mas corta desde la ubicacion actual hasta el
@@ -135,9 +150,12 @@ En la aplicacion el usuario puede:
 - ver el mapa de la ciudad como grafo;
 - ver los puntos disponibles;
 - registrar pedidos uno por uno;
+- ingresar el precio total de cada pedido;
 - cargar pedidos desde un archivo `.txt`;
 - consultar la cola de pedidos pendientes;
 - revisar el orden en que se atenderan los pedidos;
+- ordenar los pedidos por precio mayor usando Merge Sort;
+- cambiar entre el criterio de prioridad y el criterio de precio;
 - calcular una ruta entre dos puntos;
 - procesar el siguiente pedido;
 - procesar todos los pedidos pendientes;
@@ -192,10 +210,10 @@ El archivo debe tener una linea por pedido y separar los campos con punto y
 coma:
 
 ```text
-cliente;tipo_pedido;prioridad;destino
-Ana;pizza familiar;alta;Cliente Ana
-Luis;camiseta;baja;Cliente Luis
-Marta;mercado semanal;media;Cliente Marta
+cliente;tipo_pedido;prioridad;precio;destino
+Ana;pizza familiar;alta;45000;Cliente Ana
+Luis;camiseta;baja;120000;Cliente Luis
+Marta;mercado semanal;media;90000;Cliente Marta
 ```
 
 El archivo puede incluir una fila de encabezado. Tambien se pueden usar lineas
@@ -221,6 +239,9 @@ Tambien se pueden escribir como numeros:
 3 = baja
 ```
 
+El campo `precio` debe ser numerico y mayor que cero. Se puede escribir, por
+ejemplo, `45000`, `120000` o `35000.50`.
+
 Destinos validos incluidos en el mapa:
 
 ```text
@@ -243,8 +264,12 @@ El proyecto incluye el archivo `pedidos_ejemplo.txt` para probar la carga.
 
 La interfaz muestra un mapa con nodos y calles. Los numeros sobre las calles son
 los tiempos de recorrido. El panel derecho permite registrar pedidos manuales,
-escribir libremente el tipo de producto, seleccionar la prioridad del pedido o
-cargar pedidos desde TXT.
+escribir libremente el tipo de producto, seleccionar la prioridad, ingresar el
+precio del pedido o cargar pedidos desde TXT.
+
+El boton `ORDENAR POR PRECIO` cambia el criterio activo y organiza los pedidos
+pendientes con Merge Sort de mayor a menor precio. El boton `Ordenar por
+prioridad` vuelve al criterio de urgencia y orden de llegada.
 
 Colores principales:
 
@@ -261,17 +286,25 @@ repartidor cambia su ubicacion al destino entregado.
 Supongamos que se cargan estos pedidos:
 
 ```text
-Ana;pizza familiar;alta;Cliente Ana
-Luis;camiseta;baja;Cliente Luis
-Marta;mercado semanal;media;Cliente Marta
+Ana;pizza familiar;alta;45000;Cliente Ana
+Luis;camiseta;baja;120000;Cliente Luis
+Marta;mercado semanal;media;90000;Cliente Marta
 ```
 
-El sistema los ordena asi:
+Si se usa prioridad, el sistema los ordena asi:
 
 ```text
 1. Ana - pizza familiar - prioridad alta
 2. Marta - mercado semanal - prioridad media
 3. Luis - camiseta - prioridad baja
+```
+
+Si se usa precio mayor, el sistema aplica Merge Sort y los ordena asi:
+
+```text
+1. Luis - camiseta - $120000
+2. Marta - mercado semanal - $90000
+3. Ana - pizza familiar - $45000
 ```
 
 Luego calcula la ruta mas corta para cada entrega segun la ubicacion actual del
@@ -282,28 +315,28 @@ repartidor.
 ### Problema
 
 El proyecto busca resolver la organizacion de pedidos de un repartidor,
-considerando tanto la prioridad del pedido como la ruta mas corta para llegar a
-su destino.
+considerando la prioridad, el precio del pedido y la ruta mas corta para llegar
+a su destino.
 
 ### Objetivo
 
-Desarrollar una aplicacion que use grafos, Dijkstra y colas de prioridad para
-simular un sistema de entregas eficiente.
+Desarrollar una aplicacion que use grafos, Dijkstra, colas de prioridad y Merge
+Sort para simular un sistema de entregas eficiente.
 
 ### Estructuras de datos
 
 Se utiliza un grafo ponderado para representar la ciudad, una cola de prioridad
-para ordenar pedidos, listas para guardar historiales y diccionarios para
-almacenar conexiones y prioridades.
+para ordenar pedidos por urgencia, Merge Sort para ordenarlos por precio, listas
+para guardar historiales y diccionarios para almacenar conexiones y prioridades.
 
 ### Solucion
 
-El usuario registra o carga pedidos desde TXT. El sistema los ordena segun
-prioridad y orden de llegada. Luego calcula con Dijkstra la ruta mas corta desde
-la ubicacion actual del repartidor hasta el destino del pedido.
+El usuario registra o carga pedidos desde TXT. El sistema pregunta si se desea
+ordenar por prioridad o por precio mayor. Luego calcula con Dijkstra la ruta mas
+corta desde la ubicacion actual del repartidor hasta el destino del pedido.
 
 ### Interaccion
 
-El usuario puede ver el mapa, agregar pedidos, cargar pedidos desde archivo,
-consultar pendientes, procesar entregas y observar la ruta calculada en una
-interfaz grafica simple.
+El usuario puede ver el mapa, agregar pedidos con prioridad y precio, cargar
+pedidos desde archivo, ordenar por prioridad o precio, procesar entregas y
+observar la ruta calculada en una interfaz grafica simple.
